@@ -19,7 +19,6 @@ jobs:
           mkdir -p src/main/java/com/example/autopay src/main/resources/assets/autopay/lang
           if ls *.png >/dev/null 2>&1; then cp "$(ls *.png | head -n1)" src/main/resources/assets/autopay/icon.png; fi
           cat > settings.gradle <<'EOF_FILE'
-          rootProject.name = 'autopay'
           pluginManagement {
               repositories {
                   maven { url = 'https://maven.fabricmc.net/' }
@@ -27,6 +26,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
+          rootProject.name = 'autopay'
           EOF_FILE
           cat > gradle.properties <<'EOF_FILE'
           org.gradle.jvmargs=-Xmx2G
@@ -191,4 +191,5 @@ jobs:
         with:
           name: hiro-client-jar
           path: build/libs/hiro-client-1.0.0.jar
+          
           
