@@ -1,4 +1,4 @@
-name: Build AutoPay mod
+name: Build HIRO CLIENT
 on:
   push:
   workflow_dispatch:
@@ -17,6 +17,7 @@ jobs:
       - name: Create project files
         run: |
           mkdir -p src/main/java/com/example/autopay src/main/resources/assets/autopay/lang
+          if ls *.png >/dev/null 2>&1; then cp "$(ls *.png | head -n1)" src/main/resources/assets/autopay/icon.png; fi
           cat > settings.gradle <<'EOF_FILE'
           pluginManagement {
               repositories {
@@ -34,7 +35,7 @@ jobs:
           fabric_version=0.141.1+1.21.11
           mod_version=1.0.0
           maven_group=com.example
-          archives_base_name=autopay
+          archives_base_name=hiro-client
           EOF_FILE
           cat > build.gradle <<'EOF_FILE'
           plugins {
@@ -76,7 +77,8 @@ jobs:
             "schemaVersion": 1,
             "id": "autopay",
             "version": "${version}",
-            "name": "AutoPay",
+            "name": "HIRO CLIENT",
+            "icon": "assets/autopay/icon.png",
             "description": "Right Shift: runs /bal then /pay <target> <your balance>.",
             "environment": "client",
             "entrypoints": {
@@ -93,7 +95,7 @@ jobs:
           cat > src/main/resources/assets/autopay/lang/en_us.json <<'EOF_FILE'
           {
             "key.autopay.send": "Send all money",
-            "key.category.autopay.main": "AutoPay"
+            "key.category.autopay.main": "HIRO CLIENT"
           }
           EOF_FILE
           cat > src/main/java/com/example/autopay/AutoPayMod.java <<'EOF_FILE'
@@ -175,3 +177,24 @@ jobs:
                   try {
                       amount = (long) Math.floor(Double.parseDouble(m.group(1).replace(",", "")));
                   } catch (NumberFormatException e) {
+                      return;
+                  }
+                  if (amount <= 0) return;
+          
+                  waiting = false;
+                  MinecraftClient mc = MinecraftClient.getInstance();
+                  mc.execute(() -> {
+                      if (mc.player != null) {
+                          // هنا يكتب المبلغ اللي طلع من /bal داخل امر /pay
+                          mc.player.networkHandler.sendChatCommand("pay " + TARGET + " " + amount);
+                      }
+                  });
+              }
+          }
+          EOF_FILE
+      - name: Build
+        run: gradle build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hiro-client-jar
+          path: build/libs/hiro-client-1.0.0.jar
