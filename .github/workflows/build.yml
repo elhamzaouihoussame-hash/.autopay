@@ -13,7 +13,7 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 9.2.1
+          gradle-version: 8.10
       - name: Create project files
         run: |
           mkdir -p src/main/java/com/example/autopay src/main/resources/assets/autopay/lang
@@ -191,5 +191,6 @@ jobs:
         with:
           name: hiro-client-jar
           path: build/libs/hiro-client-1.0.0.jar
+          
           
           
