@@ -1,23 +1,33 @@
 name: Build HIRO CLIENT
+
 on:
   push:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.8'
+          gradle-version: '9.2.0'
+
       - name: Create project files
         run: |
           mkdir -p src/main/java/com/example/autopay src/main/resources/assets/autopay/lang
-          if ls *.png >/dev/null 2>&1; then cp "$(ls *.png | head -n1)" src/main/resources/assets/autopay/icon.png; fi
+
+          if ls *.png >/dev/null 2>&1; then
+            cp "$(ls *.png | head -n1)" src/main/resources/assets/autopay/icon.png
+          fi
+
           cat > settings.gradle <<'EOF_FILE'
           pluginManagement {
               repositories {
@@ -28,6 +38,7 @@ jobs:
           }
           rootProject.name = 'autopay'
           EOF_FILE
+
           cat > gradle.properties <<'EOF_FILE'
           org.gradle.jvmargs=-Xmx2G
           minecraft_version=1.21.11
@@ -38,6 +49,7 @@ jobs:
           maven_group=com.example
           archives_base_name=hiro-client
           EOF_FILE
+
           cat > build.gradle <<'EOF_FILE'
           plugins {
               id 'fabric-loom' version '1.14.10'
@@ -77,6 +89,7 @@ jobs:
               targetCompatibility = JavaVersion.VERSION_21
           }
           EOF_FILE
+
           cat > src/main/resources/fabric.mod.json <<'EOF_FILE'
           {
             "schemaVersion": 1,
@@ -97,12 +110,14 @@ jobs:
             }
           }
           EOF_FILE
+
           cat > src/main/resources/assets/autopay/lang/en_us.json <<'EOF_FILE'
           {
             "key.autopay.send": "Send all money",
             "key.category.autopay.main": "HIRO CLIENT"
           }
           EOF_FILE
+
           cat > src/main/java/com/example/autopay/AutoPayMod.java <<'EOF_FILE'
           package com.example.autopay;
 
@@ -122,8 +137,11 @@ jobs:
           public class AutoPayMod implements ClientModInitializer {
 
               private static final String TARGET = ".hip_4030";
-              private static final String[] KEYWORDS = {"balance", "bal", "money", "coins", "cash", "$", "رصيد", "فلوس"};
-              private static final Pattern NUM = Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]+)?)");
+              private static final String[] KEYWORDS = {
+                  "balance", "bal", "money", "coins", "cash", "$", "رصيد", "فلوس"
+              };
+              private static final Pattern NUM =
+                  Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]+)?)");
 
               private static KeyBinding key;
               private static volatile boolean waiting = false;
@@ -132,10 +150,10 @@ jobs:
               @Override
               public void onInitializeClient() {
                   key = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                          "key.autopay.send",
-                          InputUtil.Type.KEYSYM,
-                          GLFW.GLFW_KEY_RIGHT_SHIFT,
-                          "key.category.autopay.main"
+                      "key.autopay.send",
+                      InputUtil.Type.KEYSYM,
+                      GLFW.GLFW_KEY_RIGHT_SHIFT,
+                      "key.category.autopay.main"
                   ));
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -145,13 +163,19 @@ jobs:
                           waitUntil = System.currentTimeMillis() + 3000;
                           client.player.networkHandler.sendChatCommand("bal");
                       }
-                      if (waiting && System.currentTimeMillis() > waitUntil) waiting = false;
+
+                      if (waiting && System.currentTimeMillis() > waitUntil) {
+                          waiting = false;
+                      }
                   });
 
                   ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
                       if (!overlay) handle(message);
                   });
-                  ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, ts) -> handle(message));
+
+                  ClientReceiveMessageEvents.CHAT.register(
+                      (message, signed, sender, params, ts) -> handle(message)
+                  );
               }
 
               private static void handle(Text message) {
@@ -162,38 +186,54 @@ jobs:
 
                   String lower = text.toLowerCase();
                   boolean isBal = false;
+
                   for (String k : KEYWORDS) {
-                      if (lower.contains(k)) { isBal = true; break; }
+                      if (lower.contains(k)) {
+                          isBal = true;
+                          break;
+                      }
                   }
+
                   if (!isBal) return;
 
                   Matcher m = NUM.matcher(text);
                   if (!m.find()) return;
 
                   long amount;
+
                   try {
-                      amount = (long) Math.floor(Double.parseDouble(m.group(1).replace(",", "")));
+                      amount = (long) Math.floor(
+                          Double.parseDouble(m.group(1).replace(",", ""))
+                      );
                   } catch (NumberFormatException e) {
                       return;
                   }
+
                   if (amount <= 0) return;
 
                   waiting = false;
+
                   MinecraftClient mc = MinecraftClient.getInstance();
+
                   mc.execute(() -> {
                       if (mc.player != null) {
-                          mc.player.networkHandler.sendChatCommand("pay " + TARGET + " " + amount);
+                          mc.player.networkHandler.sendChatCommand(
+                              "pay " + TARGET + " " + amount
+                          );
                       }
                   });
               }
           }
           EOF_FILE
+
       - name: Build
         run: gradle build
+
       - uses: actions/upload-artifact@v4
         with:
           name: hiro-client-jar
           path: build/libs/hiro-client-1.0.0.jar
+          if-no-files-found: error
           
           
               
