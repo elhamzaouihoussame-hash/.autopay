@@ -114,7 +114,7 @@ jobs:
           cat > src/main/resources/assets/autopay/lang/en_us.json <<'EOF_FILE'
           {
             "key.autopay.send": "Send all money",
-            "key.category.autopay.main": "HIRO CLIENT"
+            "key.categories.autopay.main": "HIRO CLIENT"
           }
           EOF_FILE
 
@@ -129,6 +129,7 @@ jobs:
           import net.minecraft.client.option.KeyBinding;
           import net.minecraft.client.util.InputUtil;
           import net.minecraft.text.Text;
+          import net.minecraft.util.Identifier;
           import org.lwjgl.glfw.GLFW;
 
           import java.util.regex.Matcher;
@@ -137,9 +138,17 @@ jobs:
           public class AutoPayMod implements ClientModInitializer {
 
               private static final String TARGET = ".hip_4030";
+
+              private static final KeyBinding.Category CATEGORY =
+                  KeyBinding.Category.create(
+                      Identifier.of("autopay", "main")
+                  );
+
               private static final String[] KEYWORDS = {
-                  "balance", "bal", "money", "coins", "cash", "$", "رصيد", "فلوس"
+                  "balance", "bal", "money", "coins",
+                  "cash", "$", "رصيد", "فلوس"
               };
+
               private static final Pattern NUM =
                   Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]+)?)");
 
@@ -149,18 +158,24 @@ jobs:
 
               @Override
               public void onInitializeClient() {
-                  key = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                      "key.autopay.send",
-                      InputUtil.Type.KEYSYM,
-                      GLFW.GLFW_KEY_RIGHT_SHIFT,
-                      "key.category.autopay.main"
-                  ));
+
+                  key = KeyBindingHelper.registerKeyBinding(
+                      new KeyBinding(
+                          "key.autopay.send",
+                          InputUtil.Type.KEYSYM,
+                          GLFW.GLFW_KEY_RIGHT_SHIFT,
+                          CATEGORY
+                      )
+                  );
 
                   ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
                       while (key.wasPressed()) {
                           if (client.player == null) return;
+
                           waiting = true;
                           waitUntil = System.currentTimeMillis() + 3000;
+
                           client.player.networkHandler.sendChatCommand("bal");
                       }
 
@@ -169,9 +184,11 @@ jobs:
                       }
                   });
 
-                  ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-                      if (!overlay) handle(message);
-                  });
+                  ClientReceiveMessageEvents.GAME.register(
+                      (message, overlay) -> {
+                          if (!overlay) handle(message);
+                      }
+                  );
 
                   ClientReceiveMessageEvents.CHAT.register(
                       (message, signed, sender, params, ts) -> handle(message)
@@ -179,12 +196,15 @@ jobs:
               }
 
               private static void handle(Text message) {
+
                   if (!waiting) return;
 
                   String text = message.getString();
+
                   if (text.startsWith("<")) return;
 
                   String lower = text.toLowerCase();
+
                   boolean isBal = false;
 
                   for (String k : KEYWORDS) {
@@ -197,13 +217,16 @@ jobs:
                   if (!isBal) return;
 
                   Matcher m = NUM.matcher(text);
+
                   if (!m.find()) return;
 
                   long amount;
 
                   try {
                       amount = (long) Math.floor(
-                          Double.parseDouble(m.group(1).replace(",", ""))
+                          Double.parseDouble(
+                              m.group(1).replace(",", "")
+                          )
                       );
                   } catch (NumberFormatException e) {
                       return;
@@ -234,6 +257,3 @@ jobs:
           name: hiro-client-jar
           path: build/libs/hiro-client-1.0.0.jar
           if-no-files-found: error
-          
-          
-              
